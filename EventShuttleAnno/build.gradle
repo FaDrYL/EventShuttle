@@ -1,9 +1,27 @@
 plugins {
     id 'java-library'
     id 'org.jetbrains.kotlin.jvm'
+    id 'maven-publish'
 }
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_7
     targetCompatibility = JavaVersion.VERSION_1_7
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            // Creates a Maven publication called "release".
+            release(MavenPublication) {
+                // Applies the component for the release build variant.
+                from components.kotlin
+
+                // You can then customize attributes of the publication as shown below.
+                groupId = 'com.fadryl.media'
+                artifactId = 'eventshuttle-anno'
+                version = '1.0'
+            }
+        }
+    }
 }
