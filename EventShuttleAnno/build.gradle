@@ -19,7 +19,7 @@ afterEvaluate {
 
                 // You can then customize attributes of the publication as shown below.
                 groupId = 'com.fadryl.media'
-                artifactId = 'eventshuttle-anno'
+                artifactId = 'EventShuttleAnno'
                 version = '1.0'
             }
         }
