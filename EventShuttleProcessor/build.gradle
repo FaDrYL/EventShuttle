@@ -1,5 +1,6 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.7.10'
+    id 'maven-publish'
 }
 
 dependencies {
@@ -11,4 +12,21 @@ dependencies {
 
 sourceSets.main {
     java.srcDirs("src/main/kotlin")
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            // Creates a Maven publication called "release".
+            release(MavenPublication) {
+                // Applies the component for the release build variant.
+                from components.kotlin
+
+                // You can then customize attributes of the publication as shown below.
+                groupId = 'com.fadryl.media'
+                artifactId = 'eventshuttle-compiler'
+                version = '1.0'
+            }
+        }
+    }
 }
