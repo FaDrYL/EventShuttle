@@ -1,10 +1,13 @@
 package com.fadryl.media.eventshuttleDemo
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
+import com.fadryl.media.data.TestData
 import com.fadryl.media.eventshuttle.EventShuttle
 import com.fadryl.media.eventshuttleanno.SubscribeEvent
+import com.fadryl.media.eventshuttlemesh.MeshStrategy
 
 /**
  * Created by Hoi Lung Lam (FaDr_YL) on 2022/10/24
@@ -17,6 +20,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val meshStrategy = MeshStrategy().apply {
+            addRemoteSubscriber(application, "com.fadryl.media.eventshuttleDemo2")
+        }
+        EventShuttle.registerFlightStrategy(meshStrategy)
 
         EventShuttle.register(this)
         EventShuttle.setChannelMap(hashMapOf(
@@ -41,6 +49,11 @@ class MainActivity : AppCompatActivity() {
             EventShuttle.fire(data = i)
         }
         EventShuttle.unregister(this)
+
+        Handler(mainLooper).postDelayed({
+            EventShuttle.fire("testtest1")
+            EventShuttle.fire("testtest1", TestData(20))
+        }, 3000L)
     }
 
     @SubscribeEvent("testtest1")

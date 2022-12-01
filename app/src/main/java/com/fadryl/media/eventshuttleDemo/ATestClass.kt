@@ -22,7 +22,7 @@ class ATestClass {
     }
 
     @SubscribeEvent("testtest1")
-    fun test3(data: Boolean) {
+    private fun test3(data: Boolean) {
         Log.i("ATestClass", "test3, testtest1: invoked, data=$data, $this")
     }
 
