@@ -6,6 +6,7 @@ A simplified EventBus with abilities of event subscribe and distribution.
 ```
 dependencies {
     implementation 'com.github.FaDrYL:EventShuttle:{version}'
+    ksp "com.github.FaDrYL.eventshuttle:eventshuttle-compiler:{version}"
 }
 ```
 
