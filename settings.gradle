@@ -15,6 +15,9 @@ dependencyResolutionManagement {
 }
 rootProject.name = "EventShuttle"
 include ':app'
+include ':app2'
 include ':EventShuttle'
 include ':EventShuttleAnno'
 include ':EventShuttleProcessor'
+include ':EventShuttle-Mesh'
+include ':EventShuttle-Multiprocessing'

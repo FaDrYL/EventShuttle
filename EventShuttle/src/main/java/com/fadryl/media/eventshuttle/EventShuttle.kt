@@ -2,10 +2,13 @@ package com.fadryl.media.eventshuttle
 
 import android.util.Log
 import com.fadryl.media.eventshuttleanno.EventStop
+import com.fadryl.media.eventshuttlemp.FlightManager
+import com.fadryl.media.eventshuttlemp.FlightStrategy
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.reflect.KCallable
-import kotlin.reflect.jvm.internal.impl.load.kotlin.JvmType
+import kotlin.reflect.full.declaredMemberFunctions
+import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.jvmErasure
 
 /**
  * Created by Hoi Lung Lam (FaDr_YL) on 2022/10/24
@@ -36,12 +39,10 @@ object EventShuttle {
             .invoke(instance, eventMap1, eventAsyncMap1)
         clazz.getDeclaredMethod("loadParamMap", HashMap::class.java, HashMap::class.java)
             .invoke(instance, paramEventMap, paramEventAsyncMap)
-        Log.d(TAG, "eventMap0: $eventMap0")
-        Log.d(TAG, "eventAsyncMap0: $eventAsyncMap0")
-        Log.d(TAG, "eventMap1: $eventMap1")
-        Log.d(TAG, "eventAsyncMap1: $eventAsyncMap1")
-        Log.d(TAG, "paramEventMap: $paramEventMap")
-        Log.d(TAG, "paramEventAsyncMap: $paramEventAsyncMap")
+    }
+
+    fun registerFlightStrategy(flightStrategy: FlightStrategy) {
+        FlightManager.useStrategy(flightStrategy)
     }
 
     fun setChannelMap(channelMap: HashMap<String, (EventCallable) -> Unit>) {
@@ -68,18 +69,34 @@ object EventShuttle {
     }
 
     fun fire(eventName: String) {
-        fireAux(eventMap0[eventName], eventAsyncMap0[eventName], null)
+        FlightManager.fireEvent(eventName)
+        fireLocally(eventName)
     }
 
     fun fire(eventName: String, data: Any) {
-        fireAux(eventMap1[eventName], eventAsyncMap1[eventName], data)
+        FlightManager.fireEvent(eventName, data)
+        fireLocally(eventName, data)
     }
 
     fun fire(data: Any) {
+        FlightManager.fireEvent(data)
+        fireLocally(data)
+    }
+
+    fun fireLocally(eventName: String) {
+        fireAux(eventMap0[eventName], eventAsyncMap0[eventName], null)
+    }
+
+    fun fireLocally(eventName: String, data: Any) {
+        fireAux(eventMap1[eventName], eventAsyncMap1[eventName], data)
+    }
+
+    fun fireLocally(data: Any) {
         fireAux(paramEventMap[data::class.qualifiedName], paramEventAsyncMap[data::class.qualifiedName], data)
     }
 
     private fun fireAux(eventArrayList: ArrayList<EventStop>?, asyncEventArrayList: ArrayList<EventStop>?, data: Any?) {
+        Log.i(TAG, "fireAux: ------------------------------------------------------")
         if (eventArrayList.isNullOrEmpty() && asyncEventArrayList.isNullOrEmpty()) {
             Log.w(TAG, "Cannot fire the event since no subscriber found")
             return
@@ -127,22 +144,31 @@ object EventShuttle {
                 clazz.getDeclaredMethod(eventStop.functionName, data::class.java).invoke(obj, data)
             } catch (e: NoSuchMethodException) {
                 // Some primitive data type in kotlin will have some issues when using above way.
-                // e.g. Int in kotlin is <kotlin.Integer>, Int::class.java will get <java.lang.Integer>.
+                // e.g. Int declared in kotlin function is <kotlin.Integer>, Int::class.java will get <java.lang.Integer>.
                 // Therefore, the parameter type is unmatched for such method.
-                val key = clazz.name + "$" + eventStop.functionName
-                synchronized(eventStop) {
-                    methodCallableCache.getOrPut(key) {
-                        Log.w(TAG, "Using fallback strategy and no cache, time consuming warning! " +
-                            "data::class.java.name: ${data::class.java.name}, " +
-                            "data::class.qualifiedName: ${data::class.qualifiedName}")
-                        obj::class.members.find {
-                            it.name == eventStop.functionName && it.parameters.size == 2
-                        } ?: throw NoSuchMethodException(
-                            "Method for such name is not found or " +
-                                    "number of parameter is invalid for the Method (should be exactly 1 parameter)"
-                        )
-                    }
-                }.call(obj, data)
+                val dataType = data::class.java
+                val dataObjectType = data::class.javaObjectType
+                val key = clazz.name + "$" + eventStop.functionName + "${clazz.name}$${eventStop.functionName}(${dataType})"
+                try {
+                    synchronized(eventStop) {
+                        methodCallableCache.getOrPut(key) {
+                            Log.w(TAG, "Using fallback strategy and no cache, time consuming warning! " +
+                                "data::class.java.name: ${data::class.java.name}, " +
+                                "data::class.qualifiedName: ${data::class.qualifiedName}")
+                            obj::class.declaredMemberFunctions.find {
+                                it.name == eventStop.functionName && it.parameters.size == 2
+                                        && (it.parameters[1].type::class == dataType || it.parameters[1].type.jvmErasure.javaObjectType == dataObjectType)
+                            } ?: throw NoSuchMethodException(
+                                "Method for such name is not found or " +
+                                        "number of parameter is invalid for the Method (should be exactly 1 parameter)"
+                            )
+                        }.apply {
+                            isAccessible = true
+                        }
+                    }.call(obj, data)
+                } catch (t: Throwable) {
+                    Log.e(TAG, "fireAux: ${t.message}")
+                }
             }
         }
     }

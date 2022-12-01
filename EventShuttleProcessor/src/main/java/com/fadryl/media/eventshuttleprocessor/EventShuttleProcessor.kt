@@ -8,7 +8,11 @@ import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
-import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.symbol.FunctionKind
+import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
@@ -104,11 +108,9 @@ class EventShuttleProcessor(
                         val paramDeclaration = parameters.first().type.resolve().declaration
                         val parameterType = paramDeclaration.qualifiedName?.asString() ?:
                                 ClassName(paramDeclaration.packageName.asString(), paramDeclaration.simpleName.asString()).reflectionName()
-                        logInfo("parameterType: $parameterType, qualifiedName: ${paramDeclaration.qualifiedName?.asString()}")
                         funBuilderLoadParamMap.addDefinedMapStatement(parameterType, fullClassName, funcName, isAsync, subscribeChannel)
                     }
                 }
-                logInfo("-----")
             }
 
         return symbols.filter { !it.validate() }.toList()
@@ -140,9 +142,7 @@ class EventShuttleProcessor(
     }
 
     private fun createFileSpecByFunSpec(vararg funBuilders: FunSpec.Builder?): FileSpec? {
-        logger.info("<$TAG> funBuilders.size: ${funBuilders.size}")
         val validFunSpecs = funBuilders.filterNotNull()
-        logger.info("<$TAG> validFunSpecs.size: ${validFunSpecs.size}")
         if (validFunSpecs.isEmpty()) return null
 
         val fileSpec = FileSpec.builder(PACKAGE_NAME, FILENAME_COLLECTOR)

@@ -13,7 +13,7 @@
         android:theme="@style/Theme.EventShuttle"
         tools:targetApi="31">
         <activity
-            android:name="com.fadryl.media.eventshuttleDemo.MainActivity"
+            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -26,5 +26,10 @@
                 android:value="" />
         </activity>
     </application>
+
+    <!-- Important part to start others service for Android 11+ (api level 30+)! -->
+    <queries>
+        <package android:name="com.fadryl.media.eventshuttleDemo2" />
+    </queries>
 
 </manifest>
