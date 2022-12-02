@@ -1,6 +1,6 @@
 package com.fadryl.media.eventshuttleprocessor
 
-import com.fadryl.media.eventshuttleanno.SubscribeEvent
+import com.fadryl.media.eventshuttleanno.EventStop
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.processing.CodeGenerator
@@ -41,12 +41,12 @@ class EventShuttleProcessor(
     @OptIn(KspExperimental::class)
     override fun process(resolver: Resolver): List<KSAnnotated> {
         logInfo("Start to Process!")
-        val symbols = resolver.getSymbolsWithAnnotation(SubscribeEvent::class.java.name)
+        val symbols = resolver.getSymbolsWithAnnotation(EventStop::class.java.name)
 
         val hashMapK = ClassName("java.util", "HashMap")
         val stringK = ClassName("kotlin", "String")
         val arrayListK = ClassName("kotlin.collections", "ArrayList")
-        val eventStopK = ClassName("com.fadryl.media.eventshuttleanno", "EventStop")
+        val eventStopK = ClassName("com.fadryl.media.eventshuttleanno", "EventStopDetail")
         val arrayListEsK = arrayListK.parameterizedBy(eventStopK)               // ArrayList<EventStop>
         val hashMapSAlEsK = hashMapK.parameterizedBy(stringK, arrayListEsK)     // HashMap<String, ArrayList<EventStop>>
 
@@ -63,7 +63,6 @@ class EventShuttleProcessor(
 
         symbols.filter { it is KSFunctionDeclaration && it.validate() }
             .forEach {
-                logInfo("-----")
                 it as KSFunctionDeclaration
                 val _parent = it.parentDeclaration
                 if (_parent !is KSClassDeclaration || it.functionKind != FunctionKind.MEMBER || it.isAbstract) {
@@ -74,9 +73,8 @@ class EventShuttleProcessor(
                     logger.error("Annotation should be added to the function with only 0 or 1 parameter")
                 }
 
-                val subscribeEvent = it.getAnnotationsByType(SubscribeEvent::class).first()
-                val eventName = subscribeEvent.eventName
-                logInfo("eventName: $eventName")
+                val eventStop = it.getAnnotationsByType(EventStop::class).first()
+                val eventName = eventStop.eventName
 
                 if (parameters.isEmpty() && eventName.isEmpty()) {
                     logger.error("Annotation should be added to the function with 0 parameter only if eventName is specified as a non-empty string")
@@ -86,11 +84,9 @@ class EventShuttleProcessor(
                 val fullClassName = parent.qualifiedName?.asString() ?:
                     ClassName(parent.packageName.asString(), parent.simpleName.asString()).reflectionName()
                 val funcName = it.simpleName.asString()
-                logInfo("fullClassName: $fullClassName")
-                logInfo("funcName: $funcName")
 
-                val isAsync = subscribeEvent.isAsync
-                val subscribeChannel = subscribeEvent.channel
+                val isAsync = eventStop.isAsync
+                val subscribeChannel = eventStop.channel
                 when {
                     parameters.isEmpty() -> {
                         // @SubscribeEvent(eventName="xxx")
@@ -124,7 +120,7 @@ class EventShuttleProcessor(
         subscribeChannel: String
     ): FunSpec.Builder = this.apply {
         val mapName = if (isAsync) "asyncMap" else "map"
-        addStatement("EventStop(\"$className\", \"$funcName\", \"$subscribeChannel\").let {")
+        addStatement("EventStopDetail(\"$className\", \"$funcName\", \"$subscribeChannel\").let {")
         addStatement("    $mapName[\"$key\"]?.add(it) ?: run {")
         addStatement("        $mapName[\"$key\"] = arrayListOf(it)")
         addStatement("    }")
@@ -133,7 +129,7 @@ class EventShuttleProcessor(
 
     override fun finish() {
         super.finish()
-        logInfo("Start to write into file!")
+        logInfo("Start to write into file...")
         val funSpec = createFileSpecByFunSpec(funBuilderLoadEventMap0, funBuilderLoadEventMap1, funBuilderLoadParamMap)
         funSpec?.let {
             writeToFile(it)

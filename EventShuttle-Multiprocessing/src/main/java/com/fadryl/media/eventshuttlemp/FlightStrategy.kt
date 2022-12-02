@@ -10,7 +10,7 @@ abstract class FlightStrategy {
     /*
      * OUT
      */
-    fun fireEvent(eventName: String? = null, data: Any? = null) {
+    fun departure(eventName: String? = null, data: Any? = null) {
         if (data != null && data !is Parcelable) return
 
         val bundle = data?.let {
@@ -20,8 +20,8 @@ abstract class FlightStrategy {
             b
         }
 
-        fireEvent(eventName, bundle)
+        departure(eventName, bundle)
     }
 
-    protected abstract fun fireEvent(eventName: String?, data: Bundle?)
+    protected abstract fun departure(eventName: String?, data: Bundle?)
 }
