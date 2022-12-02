@@ -35,3 +35,6 @@ Also, add this to Apps' manifest:
     <package android:name="{target_package_name}" />
 </queries>
 ```
+
+Demo:
+![demo gif for multiprocessing](./res/mp.gif "demo gif for multiprocessing")
