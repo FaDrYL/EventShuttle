@@ -28,4 +28,7 @@
         </activity>
     </application>
 
+    <queries>
+        <package android:name="com.fadryl.media.eventshuttleDemo" />
+    </queries>
 </manifest>

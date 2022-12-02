@@ -5,16 +5,18 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.IBinder
 import android.os.Parcelable
-import com.fadryl.media.eventshuttle.EventShuttle
+import android.util.Log
+import com.fadryl.media.eventshuttlemp.FlightManager
 import com.fadryl.media.eventshuttlemp.IEventHandler
 
 /**
  * Created by Hoi Lung Lam (FaDr_YL) on 2022/11/30
  */
 class MeshService: Service() {
-    override fun onCreate() {
-        super.onCreate()
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return START_STICKY
     }
+
     override fun onBind(intent: Intent?): IBinder {
         return AirportBinder()
     }
@@ -31,22 +33,23 @@ class MeshService: Service() {
         }
 
         private fun handleEventForName(name: String) {
-            EventShuttle.fireLocally(name)
+            FlightManager.landEvent(name, null)
         }
 
         private fun handleEventForData(bundle: Bundle) {
             getActualData(bundle)?.let {
-                EventShuttle.fireLocally(it)
+                FlightManager.landEvent(null, it)
             }
         }
 
         private fun handleEventForAll(name: String, bundle: Bundle) {
             getActualData(bundle)?.let {
-                EventShuttle.fireLocally(name, it)
+                FlightManager.landEvent(name, it)
             }
         }
 
         override fun handleEvent(name: String?, bundle: Bundle?) {
+            Log.i("TESTTTTT", "handleEvent: $name, $bundle")
             when {
                 name != null && bundle != null -> handleEventForAll(name, bundle)
                 name != null -> handleEventForName(name)

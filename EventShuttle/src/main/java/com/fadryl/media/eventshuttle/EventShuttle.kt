@@ -1,9 +1,10 @@
 package com.fadryl.media.eventshuttle
 
 import android.util.Log
-import com.fadryl.media.eventshuttleanno.EventStop
+import com.fadryl.media.eventshuttleanno.EventStopDetail
 import com.fadryl.media.eventshuttlemp.FlightManager
 import com.fadryl.media.eventshuttlemp.FlightStrategy
+import com.fadryl.media.eventshuttlemp.base.IEventLandable
 import java.util.concurrent.Executors
 import kotlin.reflect.KCallable
 import kotlin.reflect.full.declaredMemberFunctions
@@ -13,7 +14,7 @@ import kotlin.reflect.jvm.jvmErasure
 /**
  * Created by Hoi Lung Lam (FaDr_YL) on 2022/10/24
  */
-object EventShuttle {
+object EventShuttle: IEventLandable {
     private const val TAG = "EventShuttle"
 
     private val eventMap0: EventMap = hashMapOf()
@@ -41,10 +42,6 @@ object EventShuttle {
             .invoke(instance, paramEventMap, paramEventAsyncMap)
     }
 
-    fun registerFlightStrategy(flightStrategy: FlightStrategy) {
-        FlightManager.useStrategy(flightStrategy)
-    }
-
     fun setChannelMap(channelMap: HashMap<String, (EventCallable) -> Unit>) {
         if (this.channelMap == null) {
             synchronized(EventShuttle::class.java) {
@@ -68,35 +65,29 @@ object EventShuttle {
         }
     }
 
+
+    /**
+     * fire the event locally 🚌.
+     */
     fun fire(eventName: String) {
-        FlightManager.fireEvent(eventName)
-        fireLocally(eventName)
-    }
-
-    fun fire(eventName: String, data: Any) {
-        FlightManager.fireEvent(eventName, data)
-        fireLocally(eventName, data)
-    }
-
-    fun fire(data: Any) {
-        FlightManager.fireEvent(data)
-        fireLocally(data)
-    }
-
-    fun fireLocally(eventName: String) {
         fireAux(eventMap0[eventName], eventAsyncMap0[eventName], null)
     }
 
-    fun fireLocally(eventName: String, data: Any) {
+    /**
+     * fire the event locally 🚌.
+     */
+    fun fire(eventName: String, data: Any) {
         fireAux(eventMap1[eventName], eventAsyncMap1[eventName], data)
     }
 
-    fun fireLocally(data: Any) {
+    /**
+     * fire the event locally 🚌.
+     */
+    fun fire(data: Any) {
         fireAux(paramEventMap[data::class.qualifiedName], paramEventAsyncMap[data::class.qualifiedName], data)
     }
 
-    private fun fireAux(eventArrayList: ArrayList<EventStop>?, asyncEventArrayList: ArrayList<EventStop>?, data: Any?) {
-        Log.i(TAG, "fireAux: ------------------------------------------------------")
+    private fun fireAux(eventArrayList: ArrayList<EventStopDetail>?, asyncEventArrayList: ArrayList<EventStopDetail>?, data: Any?) {
         if (eventArrayList.isNullOrEmpty() && asyncEventArrayList.isNullOrEmpty()) {
             Log.w(TAG, "Cannot fire the event since no subscriber found")
             return
@@ -118,11 +109,11 @@ object EventShuttle {
     }
 
     private fun fireAux(
-        eventStops: ArrayList<EventStop>,
+        eventStopDetails: ArrayList<EventStopDetail>,
         data: Any? = null,
         callable: (EventCallable) -> Unit = { it.invoke() }
     ) {
-        eventStops.forEach { eventStop ->
+        eventStopDetails.forEach { eventStop ->
             val objects = objectMap[eventStop.className] ?: return@forEach
             val channel = channelMap?.get(eventStop.channel)
             objects.forEach { obj ->
@@ -135,41 +126,106 @@ object EventShuttle {
         }
     }
 
-    private fun fireAux(eventStop: EventStop, obj: Any, data: Any? = null) {
+    private fun fireAux(eventStopDetail: EventStopDetail, obj: Any, data: Any? = null) {
         val clazz = obj::class.java
         if (data == null) {
-            clazz.getDeclaredMethod(eventStop.functionName).invoke(obj)
+            clazz.getDeclaredMethod(eventStopDetail.functionName).invoke(obj)
         } else {
-            try {
-                clazz.getDeclaredMethod(eventStop.functionName, data::class.java).invoke(obj, data)
-            } catch (e: NoSuchMethodException) {
-                // Some primitive data type in kotlin will have some issues when using above way.
-                // e.g. Int declared in kotlin function is <kotlin.Integer>, Int::class.java will get <java.lang.Integer>.
-                // Therefore, the parameter type is unmatched for such method.
-                val dataType = data::class.java
-                val dataObjectType = data::class.javaObjectType
-                val key = clazz.name + "$" + eventStop.functionName + "${clazz.name}$${eventStop.functionName}(${dataType})"
+            val dataType = data::class.java
+            val dataObjectType = data::class.javaObjectType
+            val key = clazz.name + "$" + eventStopDetail.functionName + "${clazz.name}$${eventStopDetail.functionName}(${dataType})"
+            methodCallableCache[key]?.call(obj, data) ?: run {
+                // Not in method cache
                 try {
-                    synchronized(eventStop) {
-                        methodCallableCache.getOrPut(key) {
-                            Log.w(TAG, "Using fallback strategy and no cache, time consuming warning! " +
-                                "data::class.java.name: ${data::class.java.name}, " +
-                                "data::class.qualifiedName: ${data::class.qualifiedName}")
-                            obj::class.declaredMemberFunctions.find {
-                                it.name == eventStop.functionName && it.parameters.size == 2
-                                        && (it.parameters[1].type::class == dataType || it.parameters[1].type.jvmErasure.javaObjectType == dataObjectType)
-                            } ?: throw NoSuchMethodException(
-                                "Method for such name is not found or " +
-                                        "number of parameter is invalid for the Method (should be exactly 1 parameter)"
-                            )
-                        }.apply {
-                            isAccessible = true
-                        }
-                    }.call(obj, data)
-                } catch (t: Throwable) {
-                    Log.e(TAG, "fireAux: ${t.message}")
+                    clazz.getDeclaredMethod(eventStopDetail.functionName, dataType)
+                        .invoke(obj, data)
+                } catch (e: NoSuchMethodException) {
+                    // Some primitive data type in kotlin will have some issues when using above way.
+                    // e.g. Int declared in kotlin function is <kotlin.Integer>, Int::class.java will get <java.lang.Integer>.
+                    // Therefore, the parameter type is unmatched for such method.
+                    try {
+                        synchronized(eventStopDetail) {
+                            methodCallableCache.getOrPut(key) {
+                                Log.w(
+                                    TAG,
+                                    "Using fallback strategy and no cache, time consuming warning! " +
+                                            "data::class.java.name: ${dataType.name}, " +
+                                            "data::class.qualifiedName: ${data::class.qualifiedName}"
+                                )
+                                obj::class.declaredMemberFunctions.find {
+                                    it.name == eventStopDetail.functionName && it.parameters.size == 2
+                                            && (it.parameters[1].type::class == dataType || it.parameters[1].type.jvmErasure.javaObjectType == dataObjectType)
+                                } ?: throw NoSuchMethodException(
+                                    "Method for such name is not found or " +
+                                            "number of parameter is invalid for the Method (should be exactly 1 parameter)"
+                                )
+                            }.apply {
+                                isAccessible = true
+                            }
+                        }.call(obj, data)
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "fireAux: ${t.message}")
+                    }
                 }
             }
+        }
+    }
+
+
+    /*
+     * Flight~
+     * Multiprocessing event distribution
+     */
+
+    /**
+     * register the FlightStrategy (Air Traffic Control)
+     * to starting the journey of inter-Apps event distribution
+     */
+    fun registerFlightStrategy(flightStrategy: FlightStrategy) {
+        FlightManager.init(flightStrategy, this)
+    }
+
+    /**
+     * fire the event with multiprocessing feature 🛫.
+     * Remember to registerFlightStrategy() before use.
+     */
+    fun departure(eventName: String) {
+        departure(eventName, eventName)
+    }
+
+    fun departure(localEventName: String, remoteEventName: String) {
+        FlightManager.departureEvent(remoteEventName)
+        fire(localEventName)
+    }
+
+    /**
+     * fire the event with multiprocessing feature 🛫.
+     * Remember to registerFlightStrategy() before use.
+     */
+    fun departure(eventName: String, data: Any) {
+        departure(eventName, eventName, data)
+    }
+
+    fun departure(localEventName: String, remoteEventName: String, data: Any) {
+        FlightManager.departureEvent(remoteEventName, data)
+        fire(localEventName, data)
+    }
+
+    /**
+     * fire the event with multiprocessing feature 🛫.
+     * Remember to registerFlightStrategy() before use.
+     */
+    fun departure(data: Any) {
+        FlightManager.departureEvent(data)
+        fire(data)
+    }
+
+    override fun landEvent(eventName: String?, data: Any?) {
+        when {
+            eventName != null && data != null -> fire(eventName, data)
+            eventName != null -> fire(eventName)
+            data != null -> fire(data)
+            else -> Log.e(TAG, "landEvent: both eventName and data are null")
         }
     }
 }

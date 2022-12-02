@@ -1,28 +1,50 @@
 package com.fadryl.media.eventshuttleDemo
 
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
+import android.widget.Button
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.fadryl.media.data.TestData
 import com.fadryl.media.eventshuttle.EventShuttle
-import com.fadryl.media.eventshuttleanno.SubscribeEvent
+import com.fadryl.media.eventshuttleanno.EventStop
 import com.fadryl.media.eventshuttlemesh.MeshStrategy
+import com.fadryl.media.eventshuttlemp.base.IRemoteConnectionCallback
 
 /**
  * Created by Hoi Lung Lam (FaDr_YL) on 2022/10/24
  */
 class MainActivity : AppCompatActivity() {
     companion object {
-        private const val TAG = "MainActivity"
+        private const val TAG = "MainActivity-1"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val remoteCallback = object: IRemoteConnectionCallback{
+            override fun onConnected() {
+                Log.i("DEMO1", "IRemoteConnectionCallback onConnected")
+            }
+
+            override fun onDisconnected() {
+                Log.i("DEMO1", "IRemoteConnectionCallback onDisconnected")
+            }
+
+            override fun onBindingDied() {
+                Log.i("DEMO1", "IRemoteConnectionCallback onBindingDied")
+            }
+
+            override fun onNullBinding() {
+                Log.i("DEMO1", "IRemoteConnectionCallback onNullBinding")
+            }
+
+        }
         val meshStrategy = MeshStrategy().apply {
-            addRemoteSubscriber(application, "com.fadryl.media.eventshuttleDemo2")
+            addRemoteSubscriber(application, "com.fadryl.media.eventshuttleDemo2", remoteCallback)
         }
         EventShuttle.registerFlightStrategy(meshStrategy)
 
@@ -48,47 +70,97 @@ class MainActivity : AppCompatActivity() {
             }
             EventShuttle.fire(data = i)
         }
-        EventShuttle.unregister(this)
 
         Handler(mainLooper).postDelayed({
-            EventShuttle.fire("testtest1")
-            EventShuttle.fire("testtest1", TestData(20))
+            EventShuttle.departure("testtest1")
+            EventShuttle.departure("testtest1", TestData(20))
         }, 3000L)
+
+        interactiveTest()
     }
 
-    @SubscribeEvent("testtest1")
+    @EventStop("testtest1")
     fun test1() {
         Log.i(TAG, "test1: invoked")
     }
 
-    @SubscribeEvent("testtest2")
+    @EventStop("testtest2")
     fun test2(testParam2: String) {
         Log.i(TAG, "test2: invoked, testParam2=$testParam2")
     }
 
-    @SubscribeEvent("testtest2")
+    @EventStop("testtest2")
     fun test22(testParam22: String) {
         Log.i(TAG, "test22: invoked, testParam22=$testParam22")
     }
 
-    @SubscribeEvent()
+    @EventStop()
     fun test3(testParam3: String) {
         Log.i(TAG, "test3: invoked, testParam3=$testParam3")
     }
 
-    @SubscribeEvent()
+    @EventStop()
     fun test4(testParam4: TTT) {
         Log.i(TAG, "test4: invoked, testParam4=$testParam4")
     }
 
-    @SubscribeEvent()
+    @EventStop()
     fun test5(testParam5: TTT2) {
         Log.i(TAG, "test5: invoked, testParam5=$testParam5")
     }
 
-    @SubscribeEvent(channel = "ccTest")
+    @EventStop(channel = "ccTest")
     fun test6(testParam6: Int) {
         Log.i(TAG, "test6: invoked, testParam6=$testParam6")
+    }
+
+    private fun interactiveTest() {
+        findViewById<Button>(R.id.btn_on).setOnClickListener {
+            EventShuttle.departure("on", "on_remote")
+        }
+        findViewById<Button>(R.id.btn_off).setOnClickListener {
+            EventShuttle.departure("off", "off_remote")
+        }
+    }
+
+    @EventStop("on")
+    fun set2On() {
+        runOnUiThread {
+            findViewById<TextView>(R.id.local_val).apply {
+                text = "ON"
+                setTextColor(Color.GREEN)
+            }
+        }
+    }
+
+    @EventStop("off")
+    fun set2Off() {
+        runOnUiThread {
+            findViewById<TextView>(R.id.local_val).apply {
+                text = "OFF"
+                setTextColor(Color.RED)
+            }
+        }
+    }
+
+    @EventStop("on_remote")
+    fun set2OnR() {
+        runOnUiThread {
+            findViewById<TextView>(R.id.remote_val).apply {
+                text = "ON"
+                setTextColor(Color.GREEN)
+            }
+        }
+    }
+
+    @EventStop("off_remote")
+    fun set2OffR() {
+        runOnUiThread {
+            findViewById<TextView>(R.id.remote_val).apply {
+                text = "OFF"
+                setTextColor(Color.RED)
+            }
+        }
     }
 
     data class TTT(val name: String)
