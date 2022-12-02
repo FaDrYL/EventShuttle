@@ -16,12 +16,13 @@ dependencies {
 - Async subscription
 - Multiprocessing event distribution
 
-### Multiprocessing
+### Multiprocessing Event Distribution
 ```
+// Mesh Strategy
 implementation "com.github.FaDrYL.eventshuttle:eventshuttle-mesh:{version}"
 ```
 
-Remember to register strategy to use the multiprocessing feature:
+Remember to register strategy to use the mp feature:
 ```kotlin
 val meshStrategy = MeshStrategy().apply {
     addRemoteSubscriber(application, "{target_package_name}")
