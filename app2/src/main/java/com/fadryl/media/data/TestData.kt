@@ -7,3 +7,6 @@ import android.os.Parcelable
  */
 @kotlinx.parcelize.Parcelize
 data class TestData(val num: Int): Parcelable
+
+@kotlinx.parcelize.Parcelize
+data class TimeData(val time: Long): Parcelable

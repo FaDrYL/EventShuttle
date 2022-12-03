@@ -7,8 +7,11 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
-import com.fadryl.media.eventshuttlemp.FlightStrategy
+import android.os.Parcelable
+import android.util.Log
+import com.fadryl.media.eventshuttle.EventShuttle
 import com.fadryl.media.eventshuttlemp.IEventHandler
+import com.fadryl.media.eventshuttlemp.base.FlightStrategy
 import com.fadryl.media.eventshuttlemp.base.IRemoteConnectionCallback
 import java.util.concurrent.ConcurrentHashMap
 
@@ -23,9 +26,34 @@ class MeshStrategy: FlightStrategy() {
         private const val TAG = "MeshStrategy"
     }
 
-    override fun departure(eventName: String?, data: Bundle?) {
+    override fun departure(eventName: String?, data: Any?) {
+        if (data != null && data !is Parcelable) {
+            Log.e(TAG, "departure: data should be a Parcelable")
+            return
+        }
+
+        val bundle = data?.let {
+            val b = Bundle()
+            b.putString("class", it.javaClass.simpleName)
+            b.putParcelable("data", it as Parcelable)
+            b
+        }
+
+        departure(eventName, bundle)
+    }
+
+    private fun departure(eventName: String?, data: Bundle?) {
         receivers.forEach { entry ->
             entry.value.handleEvent(eventName, data)
+        }
+    }
+
+    override fun land(eventName: String?, data: Any?) {
+        when {
+            eventName != null && data != null -> EventShuttle.fire(eventName, data)
+            eventName != null -> EventShuttle.fire(eventName)
+            data != null -> EventShuttle.fire(data)
+            else -> Log.e("EventShuttle-Mesh", "land: both eventName and data are null")
         }
     }
 

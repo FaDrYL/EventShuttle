@@ -27,12 +27,13 @@ android {
         targetCompatibility JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '11'
     }
 }
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.8.0'
+    api project(":EventShuttle")
 }
 
 afterEvaluate {

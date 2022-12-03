@@ -2,9 +2,6 @@ package com.fadryl.media.eventshuttle
 
 import android.util.Log
 import com.fadryl.media.eventshuttleanno.EventStopDetail
-import com.fadryl.media.eventshuttlemp.FlightManager
-import com.fadryl.media.eventshuttlemp.FlightStrategy
-import com.fadryl.media.eventshuttlemp.base.IEventLandable
 import java.util.concurrent.Executors
 import kotlin.reflect.KCallable
 import kotlin.reflect.full.declaredMemberFunctions
@@ -14,7 +11,7 @@ import kotlin.reflect.jvm.jvmErasure
 /**
  * Created by Hoi Lung Lam (FaDr_YL) on 2022/10/24
  */
-object EventShuttle: IEventLandable {
+object EventShuttle {
     private const val TAG = "EventShuttle"
 
     private val eventMap0: EventMap = hashMapOf()
@@ -27,7 +24,7 @@ object EventShuttle: IEventLandable {
     private val executorService by lazy {
         Executors.newCachedThreadPool()
     }
-    private val objectMap: HashMap<String, ArrayList<Any>> = hashMapOf()
+    private val objectMap: HashMap<String, MutableSet<Any>> = hashMapOf()
     private val methodCallableCache: HashMap<String, KCallable<*>> = hashMapOf()
     private var channelMap: HashMap<String, (EventCallable) -> Unit>? = null
 
@@ -54,7 +51,7 @@ object EventShuttle: IEventLandable {
 
     fun register(obj: Any) {
         val objType = obj::class.qualifiedName ?: obj.javaClass.name
-        objectMap[objType]?.add(obj) ?: run { objectMap[objType] = arrayListOf(obj) }
+        objectMap[objType]?.add(obj) ?: run { objectMap[objType] = mutableSetOf(obj) }
     }
 
     fun unregister(obj: Any) {
@@ -137,8 +134,7 @@ object EventShuttle: IEventLandable {
             methodCallableCache[key]?.call(obj, data) ?: run {
                 // Not in method cache
                 try {
-                    clazz.getDeclaredMethod(eventStopDetail.functionName, dataType)
-                        .invoke(obj, data)
+                    clazz.getDeclaredMethod(eventStopDetail.functionName, dataType).invoke(obj, data)
                 } catch (e: NoSuchMethodException) {
                     // Some primitive data type in kotlin will have some issues when using above way.
                     // e.g. Int declared in kotlin function is <kotlin.Integer>, Int::class.java will get <java.lang.Integer>.
@@ -168,64 +164,6 @@ object EventShuttle: IEventLandable {
                     }
                 }
             }
-        }
-    }
-
-
-    /*
-     * Flight~
-     * Multiprocessing event distribution
-     */
-
-    /**
-     * register the FlightStrategy (Air Traffic Control)
-     * to starting the journey of inter-Apps event distribution
-     */
-    fun registerFlightStrategy(flightStrategy: FlightStrategy) {
-        FlightManager.init(flightStrategy, this)
-    }
-
-    /**
-     * fire the event with multiprocessing feature 🛫.
-     * Remember to registerFlightStrategy() before use.
-     */
-    fun departure(eventName: String) {
-        departure(eventName, eventName)
-    }
-
-    fun departure(localEventName: String, remoteEventName: String) {
-        FlightManager.departureEvent(remoteEventName)
-        fire(localEventName)
-    }
-
-    /**
-     * fire the event with multiprocessing feature 🛫.
-     * Remember to registerFlightStrategy() before use.
-     */
-    fun departure(eventName: String, data: Any) {
-        departure(eventName, eventName, data)
-    }
-
-    fun departure(localEventName: String, remoteEventName: String, data: Any) {
-        FlightManager.departureEvent(remoteEventName, data)
-        fire(localEventName, data)
-    }
-
-    /**
-     * fire the event with multiprocessing feature 🛫.
-     * Remember to registerFlightStrategy() before use.
-     */
-    fun departure(data: Any) {
-        FlightManager.departureEvent(data)
-        fire(data)
-    }
-
-    override fun landEvent(eventName: String?, data: Any?) {
-        when {
-            eventName != null && data != null -> fire(eventName, data)
-            eventName != null -> fire(eventName)
-            data != null -> fire(data)
-            else -> Log.e(TAG, "landEvent: both eventName and data are null")
         }
     }
 }

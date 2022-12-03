@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.IBinder
 import android.os.Parcelable
-import android.util.Log
 import com.fadryl.media.eventshuttlemp.FlightManager
 import com.fadryl.media.eventshuttlemp.IEventHandler
 
@@ -49,7 +48,6 @@ class MeshService: Service() {
         }
 
         override fun handleEvent(name: String?, bundle: Bundle?) {
-            Log.i("TESTTTTT", "handleEvent: $name, $bundle")
             when {
                 name != null && bundle != null -> handleEventForAll(name, bundle)
                 name != null -> handleEventForName(name)
