@@ -1,21 +1,20 @@
 package com.fadryl.media.eventshuttlemp
 
 import android.util.Log
-import com.fadryl.media.eventshuttlemp.base.IEventLandable
+import com.fadryl.media.eventshuttlemp.base.FlightStrategy
 
 /**
  * Created by Hoi Lung Lam (FaDr_YL) on 2022/11/30
  */
-object FlightManager: IEventLandable {
-    @Volatile private var strategy: FlightStrategy? = null
-    @Volatile private var eventLandable: IEventLandable? = null
+object FlightManager {
+    @Volatile var strategy: FlightStrategy? = null
+        private set
 
-    fun init(flightStrategy: FlightStrategy, eventLandable: IEventLandable) {
+    fun init(flightStrategy: FlightStrategy) {
         if (strategy == null) {
             synchronized(this) {
                 if (strategy == null) {
                     strategy = flightStrategy
-                    this.eventLandable = eventLandable
                 }
             }
         }
@@ -29,7 +28,6 @@ object FlightManager: IEventLandable {
 
     private fun reset() {
         strategy = null
-        eventLandable = null
     }
 
     fun departureEvent(eventName: String) {
@@ -44,7 +42,7 @@ object FlightManager: IEventLandable {
         strategy?.departure(eventName=eventName, data=data) ?: warnNotInit()
     }
 
-    override fun landEvent(eventName: String?, data: Any?) {
-        eventLandable?.landEvent(eventName, data) ?: warnNotInit()
+    fun landEvent(eventName: String?, data: Any?) {
+        strategy?.land(eventName, data)
     }
 }

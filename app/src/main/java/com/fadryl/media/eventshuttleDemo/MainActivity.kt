@@ -8,10 +8,13 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.fadryl.media.data.TestData
+import com.fadryl.media.data.TimeData
 import com.fadryl.media.eventshuttle.EventShuttle
 import com.fadryl.media.eventshuttleanno.EventStop
 import com.fadryl.media.eventshuttlemesh.MeshStrategy
 import com.fadryl.media.eventshuttlemp.base.IRemoteConnectionCallback
+import com.fadryl.media.eventshuttlemp.departure
+import com.fadryl.media.eventshuttlemp.registerFlightStrategy
 
 /**
  * Created by Hoi Lung Lam (FaDr_YL) on 2022/10/24
@@ -117,9 +120,11 @@ class MainActivity : AppCompatActivity() {
     private fun interactiveTest() {
         findViewById<Button>(R.id.btn_on).setOnClickListener {
             EventShuttle.departure("on", "on_remote")
+            EventShuttle.departure("", "time_count", TimeData(System.currentTimeMillis()))
         }
         findViewById<Button>(R.id.btn_off).setOnClickListener {
             EventShuttle.departure("off", "off_remote")
+            EventShuttle.departure("", "time_count", TimeData(System.currentTimeMillis()))
         }
     }
 
@@ -161,6 +166,11 @@ class MainActivity : AppCompatActivity() {
                 setTextColor(Color.RED)
             }
         }
+    }
+
+    @EventStop("time_count")
+    fun receiveTime(timeData: TimeData) {
+        Log.i(TAG, "communication time: ${System.currentTimeMillis() - timeData.time}")
     }
 
     data class TTT(val name: String)

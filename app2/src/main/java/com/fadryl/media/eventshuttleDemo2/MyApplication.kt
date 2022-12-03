@@ -7,6 +7,7 @@ import com.fadryl.media.eventshuttle.EventShuttle
 import com.fadryl.media.eventshuttleanno.EventStop
 import com.fadryl.media.eventshuttlemesh.MeshStrategy
 import com.fadryl.media.eventshuttlemp.base.IRemoteConnectionCallback
+import com.fadryl.media.eventshuttlemp.registerFlightStrategy
 
 /**
  * Created by Hoi Lung Lam (FaDr_YL) on 2022/11/30
@@ -34,10 +35,18 @@ class MyApplication: Application() {
             }
 
         }
-        EventShuttle.registerFlightStrategy(MeshStrategy().apply {
-            addRemoteSubscriber(this@MyApplication, "com.fadryl.media.eventshuttleDemo", remoteCallback)
-        })
-        EventShuttle.register(this)
+        EventShuttle.apply {
+            registerFlightStrategy(
+                MeshStrategy().apply {
+                    addRemoteSubscriber(
+                        this@MyApplication,
+                        "com.fadryl.media.eventshuttleDemo",
+                        remoteCallback
+                    )
+                }
+            )
+            register(this@MyApplication)
+        }
     }
 
     @EventStop("testtest1")
